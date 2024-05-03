@@ -269,14 +269,11 @@ class CrudClients(ICrud, ABC):
                 client = VipClient(client_data["first_name"], client_data["last_name"], client_data["dni"])
                 client.limit = client_data["valor"]  
                 tipo_cliente = "Cliente VIP"
-            print(f"\033[92m DNI \033[97m=>\033[0m {client.dni}")
-            print(f"\033[92m Nombres \033[97m=>\033[0m {client.first_name}")
-            print(f"\033[92m Apellidos \033[97m=>\033[0m {client.last_name}")
-            if isinstance(client, VipClient):
-                print(f"\033[92m Crédito \033[97m=>\033[0m {client.limit}")
-            else:
-                print(f"\033[92m Descuento \033[97m=>\033[0m {client.discount}")
-            print(f"\033[92m Tipo de Cliente \033[97m=>\033[0m {tipo_cliente}")
+            data = [
+                ["DNI", "Nombres", "Apellidos", "Limite del crédito" if isinstance(client, VipClient) else "Descuento", "Tipo de Cliente"],
+                [client.dni, client.first_name, client.last_name, client.limit if isinstance(client, VipClient) else client.discount, tipo_cliente]
+            ]
+            print(tabulate(data, tablefmt='grid'))
         input("\n\033[1;4;97m⬅️  Enter para salir\033[0m")
     else:
         print("\n\033[1;4;97m🔴 No se encontró al cliente.\033[0m")
