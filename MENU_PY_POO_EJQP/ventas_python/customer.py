@@ -51,9 +51,8 @@ class RegularClient(Client):
 
   def show(self):
     # Método para imprimir los detalles del cliente minorista en la consola
-    print(
-      f'Cliente Minorista: DNI:{self.dni} Nombre:{self.first_name} {self.last_name} Descuento:{self.discount * 100}%')
-
+    print(f"\033[1m\033[4m\033[97mCliente Minorista ⬇️ \033[0m  \033[92m \n\n DNI \033[97m=> \033[0m {self.dni} \n\033[92m Nombres completos \033[97m=> \033[0m {self.first_name}\n\033[92m Apellidos completos \033[97m=> \033[0m{self.last_name}\n\033[92m Descuento por ser cliente regular \033[97m=> \033[0m{self.discount}")
+    
   def getJson(self):
     # Método para imprimir los detalles del cliente minorista en la consola
     return {"dni": self.dni, "nombre": self.first_name, "apellido": self.last_name, "valor": self.discount}
@@ -81,8 +80,8 @@ class VipClient(Client):
 
   def show(self):
     # Método para imprimir los detalles del cliente VIP en la consola
-    print(f'Cliente Vip: DNI:{self.dni} Nombre: {self.first_name} {self.last_name} Cupo: {self.limit}')
-
+    print(f"\033[1m\033[4m\033[97mCliente VIP ⬇️ \033[0m \033[92m\n\n DNI \033[97m=> \033[0m {self.dni} \n\033[92m Nombres completos \033[97m=> \033[0m {self.first_name}\n\033[92m Apellidos completos \033[97m=> \033[0m{self.last_name}\n\033[92m Cupo del crédito \033[97m=> \033[0m{self.limit}")
+    
   def getJson(self):
     # Método para imprimir los detalles del cliente VIP en la consola
     return {"dni": self.dni, "nombre": self.first_name, "apellido": self.last_name, "valor": self.limit}
