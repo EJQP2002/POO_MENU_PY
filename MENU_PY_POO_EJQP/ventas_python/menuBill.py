@@ -11,7 +11,7 @@ from tabulate import tabulate
 from functools import reduce
 from company import Company
 from components import Menu, Valida
-from customer import RegularClient, JsonFile
+from customer import RegularClient, VipClient, JsonFile
 from iCrud import ICrud
 from product import Product
 from sales import Sale
@@ -22,18 +22,6 @@ path, _ = os.path.split(os.path.abspath(__file__))
 white_color = Fore.WHITE
 bold_white_color = Style.BRIGHT + Fore.WHITE
 reset_color = Style.RESET_ALL
-
-
-def saveInf(informacion, json_file):
-
-    old_data = json_file.read()
-    if old_data:
-        old_info = json.loads(old_data)
-    else:
-        old_info = []
-    
-    old_info.append(informacion)
-    json_file.write(json.dumps(old_info))
     
 def message_decorator(func):
     def wrapper(*args, **kwargs):
@@ -109,30 +97,18 @@ class CrudClients(ICrud, ABC):
     if not all(c.isalpha() or c.isspace() for c in cliente) or any(len(cliente) < 3 for cliente in cliente.split()):
         return "Regular o Vip. Regular o Vip debe tener más de 2 caracteres. Números y símbolos, NO."
     
-    valor = 0.10 if cliente == "regular" else 0
-    if cliente == "vip":
+    if cliente == "regular":
+        client = RegularClient(first_name, last_name, dni, True)
+    elif cliente == "vip":
+        client = VipClient(first_name, last_name, dni)
         limite_vip = float(input("\n\033[92m Ingresar el límite de crédito \033[0m\033[97m=> \033[0m"))
-        limite_vip = max(min(limite_vip, 20000), 10000)
-        valor = round(limite_vip, 2)
+        client.limit = max(min(limite_vip, 20000), 10000)
 
     borrarPantalla()
-    print("\033[1m\033[4m\033[97mComprobar si el cliente es Regular o Vip\033[0m")
-    smsCliente = input("\n\033[92m Regular o Vip \033[0m\033[97m=> \033[0m").lower()
-    
-    if smsCliente == "regular":
-        print(f"\033[92m\n DNI \033[97m=> \033[0m {dni} \n\033[92m Nombres completos \033[97m=> \033[0m {first_name}\n\033[92m Apellidos completos \033[97m=> \033[0m{last_name}\n\033[92m Descuento por ser cliente regular \033[97m=> \033[0m{valor}")
-    
-    elif smsCliente == "vip":
-        print(f"\033[92m\n DNI \033[97m=> \033[0m {dni} \n\033[92m Nombres completos \033[97m=> \033[0m {first_name}\n\033[92m Apellidos completos \033[97m=> \033[0m{last_name}\n\033[92m Límite del crédito \033[97m=> \033[0m{valor}")
+    client.show()
 
     if input("\033[1m\033[4m\033[97m\n ¿Desea guardar los datos? (YES/NO) => \033[0m").lower() == 'yes':
-        clientInf = {
-            "dni": dni,
-            "first_name": first_name,
-            "last_name": last_name,
-            "valor": valor
-        }
-        clients.append(clientInf)
+        clients.append(client.getJson())
         json_file.write(json.dumps(clients))
         print("\n\n \033[97m🟢 Cliente guardado. \033[0m")
     else:
@@ -146,87 +122,84 @@ class CrudClients(ICrud, ABC):
     json_file = JsonFile(json_file_path)
 
     print('\n\033[1m\033[4m\033[97mActualizar datos del cliente.\033[0m')
-    
+
     dni = input("\n\033[92m Ingresar número de cédula, para actualizar datos del cliente \033[0m\033[97m=> \033[0m").strip()
     if ' ' in dni or not dni.isdigit() or len(dni) != 10:
         return "Formato correcto 10 dígitos numéricos completos. --- 🚨 ERROR: Sin espacios en medio."
-    
+
     old_clients = json.loads(json_file.read() or '[]')
-    found_client = None
-    
     found_client = next((cliente for cliente in old_clients if cliente['dni'] == dni), None)
-    
+
     if found_client is None:
         return "Cliente no encontrado."
-    
-    print(f"\033[92m\n DNI \033[97m=> \033[0m {found_client['dni']} \n\033[92m Nombres completos \033[97m=> \033[0m {found_client['first_name']}\n\033[92m Apellidos completos \033[97m=> \033[0m {found_client['last_name']}\n\033[92m Descuento por ser cliente regular \033[97m=> \033[0m {found_client['valor']}" if found_client['valor'] == 0.1 else f"\033[92m\n DNI \033[97m=> \033[0m {found_client['dni']} \n\033[92m Nombres completos \033[97m=> \033[0m {found_client['first_name']}\n\033[92m Apellidos completos \033[97m=> \033[0m {found_client['last_name']}\n\033[92m Límite del crédito \033[97m=> \033[0m {found_client['valor']}")
-    
+
+    borrarPantalla()
+    if found_client['valor'] == 0.1:
+        client = RegularClient(found_client['first_name'], found_client['last_name'], found_client['dni'], True)
+    else:
+        client = VipClient(found_client['first_name'], found_client['last_name'], found_client['dni'])
+        client.limit = found_client['valor']  
+
+    client.show() 
+
     print("\n\033[97m\033[1m\033[4mEnter para actualizar o ESC para cancelar \033[0m")
-        
+
     while True:
-        if msvcrt.kbhit():  
-            entrada = msvcrt.getch()  
-            
-            if entrada == b"\x1b": 
+        if msvcrt.kbhit():
+            entrada = msvcrt.getch()
+
+            if entrada == b"\x1b":
                 print()
                 print("\033[91;4m❌ Actualización cancelada.\033[0m")
                 time.sleep(1)
                 break
-                
-            elif entrada == b"\r":  
-                
+
+            elif entrada == b"\r":
                 borrarPantalla()
                 print('\n\033[1m\033[4m\033[97mActualizando datos del cliente.\033[0m')
-                dni = input("\n\033[92m Ingresar número de cédula \033[0m\033[97m=> \033[0m").strip()
-                if ' ' in dni or not dni.isdigit() or len(dni) != 10:
+
+                new_dni = input("\n\033[92m Ingresar número de cédula \033[0m\033[97m=> \033[0m").strip()
+                if ' ' in new_dni or not new_dni.isdigit() or len(new_dni) != 10:
                     return "Formato correcto 10 dígitos numéricos completos. Sin espacios en medio."
-                
-                if dni != found_client["dni"]:
+
+                if new_dni != found_client["dni"]:
                     return "No se puede cambiar el DNI. Solo se permite editar los datos del cliente con la cédula proporcionada inicialmente."
-                
+
                 first_name = input("\n\033[92m Ingresar nombres completos \033[0m\033[97m=> \033[0m").strip()
                 if not all(c.isalpha() or c.isspace() for c in first_name) or len(first_name.split()) != 2 or any(len(name) < 3 for name in first_name.split()):
                     return "Ingresar nombres completos. Cada nombre debe tener más de 2 caracteres. Números y símbolos, NO."
-                
+
                 last_name = input("\n\033[92m Ingresar apellidos completos \033[0m\033[97m=> \033[0m").strip()
                 if not all(c.isalpha() or c.isspace() for c in last_name) or len(last_name.split()) != 2 or any(len(lastname) < 3 for lastname in last_name.split()):
                     return "Ingresar apellidos completos. Cada apellido debe tener más de 2 caracteres. Números y símbolos, NO."
-                
+
                 cliente = input("\n\033[92m Cliente : Regular o Vip \033[0m\033[97m=> \033[0m").lower()
                 if not all(c.isalpha() or c.isspace() for c in cliente) or any(len(cliente) < 3 for cliente in cliente.split()):
                     return "Regular o Vip. Regular o Vip debe tener más de 2 caracteres. Números y símbolos, NO."
-                
-                valor = 0.10 if cliente == "regular" else 0
-                if cliente == "vip":
+
+                if cliente == "regular":
+                    client = RegularClient(first_name, last_name, new_dni, True)
+                elif cliente == "vip":
+                    client = VipClient(first_name, last_name, new_dni)
                     limite_vip = float(input("\n\033[92m Ingresar el límite de crédito \033[0m\033[97m=> \033[0m"))
-                    limite_vip = max(min(limite_vip, 20000), 10000)
-                    valor = round(limite_vip, 2) 
-                    
-                    borrarPantalla()
-                    print("\033[1m\033[4m\033[97mComprobar si el cliente es Regular o Vip\033[0m")
-                    smsCliente = input("\n\033[92m Regular o Vip \033[0m\033[97m=> \033[0m").lower()
+                    client.limit = max(min(limite_vip, 20000), 10000)
 
-                    print((lambda: f"\033[92m\n DNI \033[97m=> \033[0m {dni} \n\033[92m Nombres completos \033[97m=> \033[0m {first_name}\n\033[92m Apellidos completos \033[97m=> \033[0m{last_name}\n\033[92m Descuento por ser cliente regular \033[97m=> \033[0m{valor}")() if smsCliente == "regular" else f"\033[92m\n DNI \033[97m=> \033[0m {dni} \n\033[92m Nombres completos \033[97m=> \033[0m {first_name}\n\033[92m Apellidos completos \033[97m=> \033[0m{last_name}\n\033[92m Límite del crédito \033[97m=> \033[0m{valor}")
+                borrarPantalla()
+                client.show()
 
-                aceptar = input("\n\033[97m\033[1m\033[4m¿Aceptar y guardar? (YES/NO) => \033[0m").lower()
-                
-                if aceptar == 'yes':
-                    found_client["dni"] = dni
+                if input("\033[1m\033[4m\033[97m\n ¿Desea guardar los datos? (YES/NO) => \033[0m").lower() == 'yes':
+                    found_client["dni"] = new_dni
                     found_client["first_name"] = first_name
                     found_client["last_name"] = last_name
-                    found_client["valor"] = valor
+                    found_client["valor"] = client.discount if isinstance(client, RegularClient) else client.limit
                     json_file.write(json.dumps(old_clients))
                     print("\n⬇️")
                     print("\033[97m\033[4m🟢 Datos del cliente actualizados.\033[0m")
                     break
-
                 else:
-                    print("\n⬇️")
-                    print("\033[97m\033[4m🔴 Actualización cancelada.\033[0m")
-                    break
-            else:
-                return "Opción inválida. Presione ESC para cancelar o Enter para continuar.\033[0m"
-  
+                    print("Opción inválida. Presione ESC para cancelar o Enter para continuar.")
+    return None
+
   @message_decorator
   def delete(self):
     json_file_path = path + '/archivos/clients.json'
@@ -245,7 +218,7 @@ class CrudClients(ICrud, ABC):
     
     if deleted:
         borrarPantalla()
-        print("\033[97m\033[1m\033[4m\n✅ Verificar Datos\033[0m")
+        print("\033[97m\033[1m\033[4m✅ Verificar Datos\033[0m")
         client_to_delete = next((client for client in old_clients if client["dni"] == dni), None)
         print("\n\033[92m DNI \033[97m=>\033[0m", dni)
         print("\033[92m Nombres \033[97m=>\033[0m", client_to_delete["first_name"])
@@ -289,15 +262,22 @@ class CrudClients(ICrud, ABC):
         borrarPantalla()
         print("\033[97m\033[1m\033[4m✅ Consultando Datos Clientes\033[0m")
         print()
-        for client in found_clients:
-            if client["valor"] == 0.1:
-                headers = ["DNI", "Nombres", "Apellido", "Descuento", "Tipo de Cliente"]
-                tipo_cliente = "Cliente Regular"
+        for client_data in found_clients:
+            if client_data["valor"] == 0.1:
+                client = RegularClient(client_data["first_name"], client_data["last_name"], client_data["dni"], True)
+                tipo_cliente = "Cliente Minorista"
             else:
-                headers = ["DNI", "Nombres", "Apellido", "Crédito", "Tipo de Cliente"]
-                tipo_cliente = "Crédito del Cliente VIP"
-            row = [[client["dni"], client["first_name"], client["last_name"], client["valor"], tipo_cliente]]
-            print(tabulate(row, headers, tablefmt="pretty"))
+                client = VipClient(client_data["first_name"], client_data["last_name"], client_data["dni"])
+                client.limit = client_data["valor"]  
+                tipo_cliente = "Cliente VIP"
+            print(f"\033[92m DNI \033[97m=>\033[0m {client.dni}")
+            print(f"\033[92m Nombres \033[97m=>\033[0m {client.first_name}")
+            print(f"\033[92m Apellidos \033[97m=>\033[0m {client.last_name}")
+            if isinstance(client, VipClient):
+                print(f"\033[92m Crédito \033[97m=>\033[0m {client.limit}")
+            else:
+                print(f"\033[92m Descuento \033[97m=>\033[0m {client.discount}")
+            print(f"\033[92m Tipo de Cliente \033[97m=>\033[0m {tipo_cliente}")
         input("\n\033[1;4;97m⬅️  Enter para salir\033[0m")
     else:
         print("\n\033[1;4;97m🔴 No se encontró al cliente.\033[0m")
@@ -315,6 +295,7 @@ class CrudProducts(ICrud):
         return "Del dígito. --- 🚨 ERROR: Sin espacios en medio."
 
     products_data = json.loads(json_file.read() or '[]')
+    
     if any(product["id"] == id for product in products_data):
         return "Ya existe un producto con este ID."
 
@@ -339,13 +320,9 @@ class CrudProducts(ICrud):
     print(f"\n\033[92m ID \033[0m\033[97m =>\033[0m {id}\n\033[92m Descripción\033[0m\033[97m =>\033[0m {descripcion}\n\033[92m Precio $\033[0m\033[97m =>\033[0m {precio}\n\033[92m Stock\033[0m\033[97m =>\033[0m {stock}")
 
     if input("\n\033[97m\033[1m\033[4m¿Aceptar y guardar? (YES/NO) => \033[0m").lower() == 'yes':
-        producInf = {
-            "id" : id,
-            "descripcion" : descripcion,
-            "precio" : precio,
-            "stock" : stock
-        }
-        saveInf(producInf, json_file)
+        product = Product(id, descripcion, precio, stock)
+        products_data.append(product.getJson())
+        json_file.write(json.dumps(products_data))
         print("\n⬇️")
         print("\033[97m\033[4m🟢 Producto se guardó.\033[0m")
         time.sleep(2)
@@ -468,7 +445,7 @@ class CrudProducts(ICrud):
     
     if deleted:
         borrarPantalla()
-        print("\033[97m\033[1m\033[4m\n✅ Verificar Datos\033[0m")
+        print("\n\033[97m\033[1m\033[4m✅ Verificar Datos\033[0m")
         product_to_delete = next((product for product in old_products if product["id"] == id), None)
         print("\033[92m ID \033[97m=>\033[0m", id)
         print("\033[92m Descripción \033[97m=>\033[0m", product_to_delete["descripcion"])
